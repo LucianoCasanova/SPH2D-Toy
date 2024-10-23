@@ -18,6 +18,6 @@ namespace conf
 	float const H = window_size_f.x;
 	float const v_max = std::sqrt(2.f * g * H);
 	float const tau = h / v_max;
-	float const beta = 2.f; // Drag coefficient
-	float const alpha = 1.f; // Inelastic coefficient
+	float const beta = 0.2; // Drag coefficient
+	float const alpha = 0.8; // Inelastic coefficient
 }

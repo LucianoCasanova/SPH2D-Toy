@@ -71,10 +71,10 @@ void Simulation::render()
     particle.shape.setPosition(particle.getPosition());
     mWindow.draw(particle.shape);
 
-    if (count % 1000 == 0)
+    if (count % 300 == 0)
     {
         float speed = particle.getVelocityMagnitude();
-        float energy = conf::m_particle * (0.5 * speed * speed - conf::g * particle.getPosition().y);
+        float energy = conf::m_particle * (0.5 * speed * speed - conf::g * (particle.getPosition().y - conf::window_size_f.y));
         std::cout << energy << std::endl;
         count = 0;
     }
