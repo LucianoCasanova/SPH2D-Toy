@@ -1,11 +1,12 @@
 #pragma once
 #include "configuration.hpp"
+#include <random>
 
 struct Particle
 {
 	private:
 		sf::Vector2f r = { conf::window_size_f.x/2, conf::window_size_f.y/2 };
-		sf::Vector2f v = { 200.f, -100.f } ;
+		sf::Vector2f v = { 0.f, -100.f } ;
 		sf::Vector2f a = { 0.f, conf::g };
 		float const m = conf::m_particle;
 
@@ -19,7 +20,9 @@ struct Particle
 		Particle();
 		void updateParticle(sf::Time deltaTime);
 		sf::Vector2f getPosition();
+		void setPosition(sf::Vector2f pos);
 		sf::Vector2f getVelocity();
+		void setVelocity(sf::Vector2f vel);
 		float getVelocityMagnitude();
 };
 
@@ -78,6 +81,34 @@ void Particle::handleWallCollisions(sf::Time deltaTime) //Optimizar
 	}
 }
 
+std::vector<Particle> createParticles(uint32_t count)
+{
+	std::vector<Particle> particles;
+	particles.reserve(count);
+
+	//Random numbers generator
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> dis(0.0f, 1.0f);
+
+	// Create randomly distributed particles on the screen
+	for (uint32_t i{ count }; i--;)
+	{
+		float const rx = dis(gen) * conf::window_size_f.x;
+		float const ry = dis(gen) * conf::window_size_f.y;
+
+		float const vx = dis(gen) * 200.f - 100.f;
+		float const vy = dis(gen) * 200.f - 100.f;
+
+		Particle particle;
+		particle.setPosition({ rx,ry });
+		particle.setVelocity({ vx,vy });
+
+		particles.push_back({ particle });
+	}
+	return particles;
+}
+
 sf::Vector2f Particle::getPosition()
 {
 	return r;
@@ -91,4 +122,14 @@ sf::Vector2f Particle::getVelocity()
 float Particle::getVelocityMagnitude()
 {
 	return std::sqrt(v.x * v.x + v.y * v.y);
+}
+
+void Particle::setPosition(sf::Vector2f pos)
+{
+	r = pos;
+}
+
+void Particle::setVelocity(sf::Vector2f vel)
+{
+	v = vel;
 }

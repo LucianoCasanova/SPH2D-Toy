@@ -12,12 +12,13 @@ namespace conf
 	float const m_particle = 10.f;
 	float const h = 30.f;
 	sf::Color particle_color = sf::Color::Blue;
+	uint32_t n_particles = 10;
 
 	// Physical parameters
 	float const g = 9.8;
 	float const H = window_size_f.x;
 	float const v_max = std::sqrt(2.f * g * H);
 	float const tau = h / v_max;
-	float const beta = 0.2; // Drag coefficient
+	float const beta = 0; // Drag coefficient
 	float const alpha = 0.8; // Inelastic coefficient
 }

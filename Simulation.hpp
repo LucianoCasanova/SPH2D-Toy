@@ -17,14 +17,15 @@ private:
 private:
     sf::RenderWindow mWindow;
     sf::Time TimePerFrame = sf::seconds(conf::dt);
-    Particle particle;
+    std::vector<Particle> particles;
     int count = 0;
 };
 
 Simulation::Simulation() : 
-    mWindow(sf::VideoMode(conf::window_size.x, conf::window_size.y), "SPH2d-Toy", sf::Style::Fullscreen), particle()
+    mWindow(sf::VideoMode(conf::window_size.x, conf::window_size.y), "SPH2d-Toy", sf::Style::Fullscreen), particles()
 {
     std::cout << "TimePerFrame: " << TimePerFrame.asSeconds() << std::endl;
+    particles = createParticles(conf::n_particles);
 }
 
 void Simulation::run()
@@ -61,24 +62,31 @@ void Simulation::processEvents()
 
 void Simulation::update(sf::Time deltaTime)
 {
-    particle.updateParticle(deltaTime);
+    for (uint32_t i{ conf::n_particles }; i--; )
+    {
+        particles[i].updateParticle(deltaTime);
+    }
 }
 
 void Simulation::render()
 {
     mWindow.clear();
 
-    particle.shape.setPosition(particle.getPosition());
-    mWindow.draw(particle.shape);
+    for (uint32_t i{ conf::n_particles }; i--; )
+    {
+        particles[i].shape.setPosition(particles[i].getPosition());
+        mWindow.draw(particles[i].shape);
+    }
+ 
 
-    if (count % 300 == 0)
+    /*if (count % 300 == 0)
     {
         float speed = particle.getVelocityMagnitude();
         float energy = conf::m_particle * (0.5 * speed * speed - conf::g * (particle.getPosition().y - conf::window_size_f.y));
         std::cout << energy << std::endl;
         count = 0;
     }
-    count++;
+    count++;*/
     
 
     mWindow.display();
