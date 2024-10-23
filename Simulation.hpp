@@ -1,6 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include "configuration.hpp"
+#include "Particle.hpp"
 
 class Simulation
 {
@@ -16,10 +17,11 @@ private:
 private:
     sf::RenderWindow mWindow;
     sf::Time TimePerFrame = sf::seconds(conf::dt);
+    Particle particle;
 };
 
 Simulation::Simulation() : 
-    mWindow(sf::VideoMode(conf::window_size.x, conf::window_size.y), "SPH2d-Toy", sf::Style::Fullscreen)
+    mWindow(sf::VideoMode(conf::window_size.x, conf::window_size.y), "SPH2d-Toy", sf::Style::Fullscreen), particle()
 {
 }
 
@@ -57,11 +59,12 @@ void Simulation::processEvents()
 
 void Simulation::update(sf::Time deltaTime)
 {
+    particle.updateParticle(deltaTime);
 }
 
 void Simulation::render()
 {
     mWindow.clear();
-
+    mWindow.draw(particle.shape);
     mWindow.display();
 }
