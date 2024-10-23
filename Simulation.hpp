@@ -18,11 +18,13 @@ private:
     sf::RenderWindow mWindow;
     sf::Time TimePerFrame = sf::seconds(conf::dt);
     Particle particle;
+    int count = 0;
 };
 
 Simulation::Simulation() : 
     mWindow(sf::VideoMode(conf::window_size.x, conf::window_size.y), "SPH2d-Toy", sf::Style::Fullscreen), particle()
 {
+    std::cout << "TimePerFrame: " << TimePerFrame.asSeconds() << std::endl;
 }
 
 void Simulation::run()
@@ -38,7 +40,7 @@ void Simulation::run()
         {
             timeSinceLastUpdate -= TimePerFrame;
             processEvents();
-            update(TimePerFrame);
+            update(sf::seconds(conf::tau));
         }
         render();
     }
@@ -65,6 +67,19 @@ void Simulation::update(sf::Time deltaTime)
 void Simulation::render()
 {
     mWindow.clear();
+
+    particle.shape.setPosition(particle.getPosition());
     mWindow.draw(particle.shape);
+
+    if (count % 1000 == 0)
+    {
+        float speed = particle.getVelocityMagnitude();
+        float energy = conf::m_particle * (0.5 * speed * speed - conf::g * particle.getPosition().y);
+        std::cout << energy << std::endl;
+        count = 0;
+    }
+    count++;
+    
+
     mWindow.display();
 }
