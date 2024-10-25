@@ -24,7 +24,7 @@ private:
 Simulation::Simulation() : 
     mWindow(sf::VideoMode(conf::window_size.x, conf::window_size.y), "SPH2d-Toy", sf::Style::Fullscreen), particles()
 {
-    std::cout << "TimePerFrame: " << TimePerFrame.asSeconds() << std::endl;
+    //std::cout << "TimePerFrame: " << TimePerFrame.asSeconds() << std::endl;
     particles = createParticles(conf::n_particles);
 }
 
@@ -37,6 +37,7 @@ void Simulation::run()
     {
         processEvents();
         timeSinceLastUpdate += clock.restart();
+        //std::cout << timeSinceLastUpdate.asMilliseconds() << std::endl;
         while (timeSinceLastUpdate > TimePerFrame)
         {
             timeSinceLastUpdate -= TimePerFrame;
@@ -62,9 +63,30 @@ void Simulation::processEvents()
 
 void Simulation::update(sf::Time deltaTime)
 {
+    // Creo que la idea va a ser calcular el vector de fuerzas de collision para cada particula y pasarlo como argumento para que se haga el update particle
+    
+    std::vector<sf::Vector2f> f_collisions(conf::n_particles, sf::Vector2f(0.0f, 0.0f));
+
     for (uint32_t i{ conf::n_particles }; i--; )
     {
-        particles[i].updateParticle(deltaTime);
+        for (uint32_t j = i; j--; )
+        {
+            float d_ij = distance(particles[j].getPosition(), particles[i].getPosition());
+            
+            if (d_ij < 2.f * conf::h)
+            {
+                sf::Vector2f u_ij = (particles[j].getPosition() - particles[i].getPosition()) / d_ij;
+                sf::Vector2f f_collision_i = -1.f *conf::k * (2.f * conf::h - d_ij) * u_ij;
+                
+                f_collisions[i] += f_collision_i;
+                f_collisions[j] -= f_collision_i;
+            }
+        }
+    }
+
+    for (uint32_t i{ conf::n_particles }; i--; )
+    {
+        particles[i].updateParticle(deltaTime, f_collisions[i]);
     }
 }
 
@@ -95,3 +117,4 @@ void Simulation::render()
 
     mWindow.display();
 }
+

@@ -18,7 +18,7 @@ struct Particle
 
 	public:
 		Particle(sf::Vector2f pos, sf::Vector2f vel);
-		void updateParticle(sf::Time deltaTime);
+		void updateParticle(sf::Time deltaTime, sf::Vector2f& f_collision);
 		sf::Vector2f getPosition();
 		sf::Vector2f getVelocity();
 		float getVelocityMagnitude();
@@ -33,17 +33,13 @@ Particle::Particle(sf::Vector2f pos, sf::Vector2f vel)
 	//shape.setFillColor(conf::particle_color); 
 }
 
-void Particle::updateParticle(sf::Time deltaTime)
+void Particle::updateParticle(sf::Time deltaTime, sf::Vector2f& f_collision)
 {
-	// No friction
-	 //sf::Vector2f f_air = { 0, 0 };
 
-	// With friction
 	sf::Vector2f f_air = -1.f * conf::beta * v;
-
 	sf::Vector2f f_grav = { 0.f, m*conf::g };
 
-	a = 1.f / m * (f_air + f_grav);
+	a = 1.f / m * (f_air + f_grav + f_collision);
 
 	// Explicit Euler Method
 
@@ -52,7 +48,7 @@ void Particle::updateParticle(sf::Time deltaTime)
 
 // Inellastic discrete
 
-void Particle::handleWallCollisions(sf::Time deltaTime) //Optimizar
+void Particle::handleWallCollisions(sf::Time deltaTime)
 {
 	r += v * deltaTime.asSeconds();
 	v += a * deltaTime.asSeconds();
@@ -60,10 +56,12 @@ void Particle::handleWallCollisions(sf::Time deltaTime) //Optimizar
 	if (r.x < 0 && v.x < 0 || r.x > conf::window_size_f.x - 2.f * conf::h && v.x > 0)
 	{
 		v.x *= -1.f * conf::alpha;
+		v.y *= conf::alpha;
 	}
 	if (r.y < 0 && v.y < 0 || r.y > conf::window_size_f.y - 2.f * conf::h && v.y > 0)
 	{
 		v.y *= -1.f * conf::alpha;
+		v.x *= conf::alpha;
 	}
 }
 
@@ -80,8 +78,8 @@ std::vector<Particle> createParticles(uint32_t count)
 	// Create randomly distributed particles on the screen
 	for (uint32_t i{ count }; i--;)
 	{
-		float const rx = dis(gen) * conf::window_size_f.x;
-		float const ry = dis(gen) * conf::window_size_f.y;
+		float const rx = dis(gen) * (conf::window_size_f.x - 2.f * conf::h);
+		float const ry = dis(gen) * (conf::window_size_f.y - 2.f * conf::h);
 
 		float const vx = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
 		float const vy = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
