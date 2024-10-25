@@ -1,0 +1,19 @@
+﻿ "ASCII" codes for α (224) and ß (225)
+ 
+ - Continuous inellastic:
+  |
+  |-> For conservative system, energy grows slowly.
+  |
+  |-> With α = 0.99 and ß = 0, dissipative.
+  |
+  |-> With α = 1 and ß = 0.1, dissipative. It tends to eliminate x velocity.
+  |
+  |-> With α = 1 and ß = 0.01, almost conservative.
+
+ - Discrete inellastic:
+  |
+  |-> For conservative system, energy grows slowly.
+  |
+  |-> With α = 0.99 and ß = 0, dissipative.
+  |
+  |-> With α = 1 and ß = 0.01, dissipative. 

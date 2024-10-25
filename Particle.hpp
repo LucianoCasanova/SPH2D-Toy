@@ -17,16 +17,15 @@ struct Particle
 		sf::CircleShape shape;
 
 	public:
-		Particle();
+		Particle(sf::Vector2f pos, sf::Vector2f vel);
 		void updateParticle(sf::Time deltaTime);
 		sf::Vector2f getPosition();
-		void setPosition(sf::Vector2f pos);
 		sf::Vector2f getVelocity();
-		void setVelocity(sf::Vector2f vel);
 		float getVelocityMagnitude();
 };
 
-Particle::Particle()
+Particle::Particle(sf::Vector2f pos, sf::Vector2f vel)
+        : r(pos), v(vel)
 {
 	shape.setRadius(conf::h);
 	shape.setPosition(r);
@@ -51,33 +50,20 @@ void Particle::updateParticle(sf::Time deltaTime)
 	handleWallCollisions(deltaTime);
 }
 
+// Inellastic discrete
+
 void Particle::handleWallCollisions(sf::Time deltaTime) //Optimizar
 {
-	sf::Vector2f next_v = v + a * deltaTime.asSeconds();
-	sf::Vector2f next_r = r + v * deltaTime.asSeconds();
+	r += v * deltaTime.asSeconds();
+	v += a * deltaTime.asSeconds();
 
-	bool horizontal = r.x > 0 && r.x < conf::window_size_f.x;
-	bool vertical = r.y > 0 && r.y < conf::window_size_f.y;
-
-	if (horizontal && vertical)
+	if (r.x < 0 && v.x < 0 || r.x > conf::window_size_f.x - 2.f * conf::h && v.x > 0)
 	{
-		v = next_v;
-		r = next_r;
+		v.x *= -1.f * conf::alpha;
 	}
-	else 
+	if (r.y < 0 && v.y < 0 || r.y > conf::window_size_f.y - 2.f * conf::h && v.y > 0)
 	{
-		if (!vertical)
-		{
-			next_v.y *= -1.f;
-			next_r.y = (next_r.y < 0) ? -1.f * next_r.y : 2.f * conf::window_size_f.y - next_r.y;
-		}
-		if (!horizontal)
-		{
-			next_v.x *= -1.f;
-			next_r.x = (next_r.x < 0) ? -1.f * next_r.x : 2.f * conf::window_size_f.x - next_r.x;
-		}
-		v = conf::alpha * next_v;
-		r = next_r;
+		v.y *= -1.f * conf::alpha;
 	}
 }
 
@@ -97,12 +83,10 @@ std::vector<Particle> createParticles(uint32_t count)
 		float const rx = dis(gen) * conf::window_size_f.x;
 		float const ry = dis(gen) * conf::window_size_f.y;
 
-		float const vx = dis(gen) * 200.f - 100.f;
-		float const vy = dis(gen) * 200.f - 100.f;
+		float const vx = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
+		float const vy = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
 
-		Particle particle;
-		particle.setPosition({ rx,ry });
-		particle.setVelocity({ vx,vy });
+		Particle particle({ rx, ry }, { vx, vy });
 
 		particles.push_back({ particle });
 	}
@@ -122,14 +106,4 @@ sf::Vector2f Particle::getVelocity()
 float Particle::getVelocityMagnitude()
 {
 	return std::sqrt(v.x * v.x + v.y * v.y);
-}
-
-void Particle::setPosition(sf::Vector2f pos)
-{
-	r = pos;
-}
-
-void Particle::setVelocity(sf::Vector2f vel)
-{
-	v = vel;
 }

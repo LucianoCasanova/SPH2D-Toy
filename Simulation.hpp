@@ -79,14 +79,18 @@ void Simulation::render()
     }
  
 
-    /*if (count % 300 == 0)
+    if (count % 300 == 0)
     {
-        float speed = particle.getVelocityMagnitude();
-        float energy = conf::m_particle * (0.5 * speed * speed - conf::g * (particle.getPosition().y - conf::window_size_f.y));
+        float energy = 0.f;
+        for (uint32_t i{ conf::n_particles }; i--;)
+        {
+            float speed = particles[i].getVelocityMagnitude();
+            energy += conf::m_particle * (0.5 * speed * speed - conf::g * (particles[i].getPosition().y - conf::window_size_f.y));
+        }
         std::cout << energy << std::endl;
         count = 0;
     }
-    count++;*/
+    count++;
     
 
     mWindow.display();
