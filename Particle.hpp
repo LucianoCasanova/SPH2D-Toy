@@ -6,7 +6,7 @@ struct Particle
 {
 	private:
 		sf::Vector2f r = { conf::window_size_f.x/2, conf::window_size_f.y/2 };
-		sf::Vector2f v = { 0.f, -100.f } ;
+		sf::Vector2f v = { 0.f, 0.f } ;
 		sf::Vector2f a = { 0.f, conf::g };
 		float const m = conf::m_particle;
 

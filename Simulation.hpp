@@ -2,6 +2,8 @@
 #include <SFML/Graphics.hpp>
 #include "configuration.hpp"
 #include "Particle.hpp"
+#include "hashGrid.hpp"
+#include <sstream>
 
 class Simulation
 {
@@ -13,24 +15,41 @@ private:
     void processEvents();
     void update(sf::Time);
     void render();
+    void neighborSearch();
+    void calculateTotalEnergy();
 
 private:
     sf::RenderWindow mWindow;
     sf::Time TimePerFrame = sf::seconds(conf::dt);
     std::vector<Particle> particles;
-    int count = 0;
+    HashGrid hashGrid;
+    sf::Text text;
+    std::ostringstream oss;
 };
 
 Simulation::Simulation() : 
     mWindow(sf::VideoMode(conf::window_size.x, conf::window_size.y), "SPH2d-Toy", sf::Style::Fullscreen), particles()
 {
-    //std::cout << "TimePerFrame: " << TimePerFrame.asSeconds() << std::endl;
+    std::cout << "TimePerFrame: " << TimePerFrame.asSeconds() << std::endl;
     particles = createParticles(conf::n_particles);
+
+    static sf::Font font;
+    static bool fontLoaded = false;
+    if (!fontLoaded) {
+        if (!font.loadFromFile("arial.ttf")) {
+            std::cerr << "Error: No se pudo cargar la fuente." << std::endl;
+            return;
+        }
+        fontLoaded = true;
+    }
+    text.setFont(font);
+    text.setCharacterSize(30);
+    text.setFillColor(sf::Color::White);
 }
 
 void Simulation::run()
 {
-    mWindow.setMouseCursorVisible(false);
+    mWindow.setMouseCursorVisible(true);
     sf::Clock clock;
     sf::Time timeSinceLastUpdate = sf::Time::Zero;
     while (mWindow.isOpen())
@@ -63,8 +82,6 @@ void Simulation::processEvents()
 
 void Simulation::update(sf::Time deltaTime)
 {
-    // Creo que la idea va a ser calcular el vector de fuerzas de collision para cada particula y pasarlo como argumento para que se haga el update particle
-    
     std::vector<sf::Vector2f> f_collisions(conf::n_particles, sf::Vector2f(0.0f, 0.0f));
 
     for (uint32_t i{ conf::n_particles }; i--; )
@@ -99,22 +116,60 @@ void Simulation::render()
         particles[i].shape.setPosition(particles[i].getPosition());
         mWindow.draw(particles[i].shape);
     }
- 
 
-    if (count % 300 == 0)
-    {
-        float energy = 0.f;
-        for (uint32_t i{ conf::n_particles }; i--;)
-        {
-            float speed = particles[i].getVelocityMagnitude();
-            energy += conf::m_particle * (0.5 * speed * speed - conf::g * (particles[i].getPosition().y - conf::window_size_f.y));
-        }
-        std::cout << energy << std::endl;
-        count = 0;
-    }
-    count++;
-    
+    neighborSearch();
+
+    calculateTotalEnergy();
+
+    text.setString(oss.str());
+    mWindow.draw(text);
+    oss.str("");
 
     mWindow.display();
 }
 
+void Simulation::neighborSearch()
+{
+    hashGrid.clearGrid();
+    hashGrid.mapParticlesToCell(particles);
+
+    sf::Vector2f mousePos = (sf::Vector2f) sf::Mouse::getPosition(mWindow);
+
+    uint32_t mouseHash = hashGrid.getHashFromPos(mousePos);
+    std::vector<Particle> cellParticles = hashGrid.getContentOfCell(mouseHash);
+
+    for (auto& particle : cellParticles)
+    {
+        particle.shape.setPosition(particle.getPosition());
+        particle.shape.setFillColor(sf::Color::Magenta);
+        mWindow.draw(particle.shape);
+    }
+
+    //sf::RectangleShape cellBorder;
+
+    ////float a = (mousePos.x % conf::cellSize) * conf::cellSize;
+
+    //cellBorder.setPosition(1000, 1000);
+
+    //cellBorder.setOutlineColor(sf::Color::Magenta);
+    //cellBorder.setOutlineThickness(5.f);
+    //
+    //cellBorder.setSize({ 100.f,100.f });
+    //cellBorder.setFillColor(sf::Color::Transparent);
+    //mWindow.draw(cellBorder);
+
+    oss << "Mouse Hash: " << mouseHash << std::endl;
+}
+
+void Simulation::calculateTotalEnergy()
+{
+    float energy = 0.f;
+
+    for (uint32_t i{ conf::n_particles }; i--;)
+    {
+        float speed = particles[i].getVelocityMagnitude();
+        energy += conf::m_particle * (0.5 * speed * speed - conf::g * (particles[i].getPosition().y - conf::window_size_f.y));
+    }
+
+    oss << "Total Energy: " << energy << std::endl;
+}
