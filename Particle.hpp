@@ -17,20 +17,39 @@ struct Particle
 		sf::CircleShape shape;
 
 	public:
+		Particle();
 		Particle(sf::Vector2f pos, sf::Vector2f vel);
+		Particle& operator=(const Particle& other);
 		void updateParticle(sf::Time deltaTime, sf::Vector2f& f_collision);
 		sf::Vector2f getPosition();
 		sf::Vector2f getVelocity();
 		float getVelocityMagnitude();
 };
 
+Particle::Particle()
+{
+	shape.setRadius(conf::h);
+	shape.setOrigin(conf::h, conf::h);
+	shape.setPosition(r);
+	shape.setFillColor(sf::Color::Blue);
+}
+
 Particle::Particle(sf::Vector2f pos, sf::Vector2f vel)
         : r(pos), v(vel)
 {
 	shape.setRadius(conf::h);
+	shape.setOrigin(conf::h , conf::h);
 	shape.setPosition(r);
 	shape.setFillColor(sf::Color::Blue); // Check why the following doesn't work
 	//shape.setFillColor(conf::particle_color); 
+}
+
+Particle& Particle::operator=(const Particle& other)
+{
+	if (this != &other) {
+		r = other.r;
+	}
+	return *this;
 }
 
 void Particle::updateParticle(sf::Time deltaTime, sf::Vector2f& f_collision)
@@ -53,12 +72,12 @@ void Particle::handleWallCollisions(sf::Time deltaTime)
 	r += v * deltaTime.asSeconds();
 	v += a * deltaTime.asSeconds();
 
-	if (r.x < 0 && v.x < 0 || r.x > conf::window_size_f.x - 2.f * conf::h && v.x > 0)
+	if (r.x < conf::h && v.x < 0 || r.x > conf::window_size_f.x - conf::h && v.x > 0)
 	{
 		v.x *= -1.f * conf::alpha;
 		v.y *= conf::alpha;
 	}
-	if (r.y < 0 && v.y < 0 || r.y > conf::window_size_f.y - 2.f * conf::h && v.y > 0)
+	if (r.y < conf::h && v.y < 0 || r.y > conf::window_size_f.y - conf::h && v.y > 0)
 	{
 		v.y *= -1.f * conf::alpha;
 		v.x *= conf::alpha;
@@ -78,8 +97,8 @@ std::vector<Particle> createParticles(uint32_t count)
 	// Create randomly distributed particles on the screen
 	for (uint32_t i{ count }; i--;)
 	{
-		float const rx = dis(gen) * (conf::window_size_f.x - 2.f * conf::h);
-		float const ry = dis(gen) * (conf::window_size_f.y - 2.f * conf::h);
+		float const rx = conf::h + dis(gen) * (conf::window_size_f.x - 2.f * conf::h);
+		float const ry = conf::h + dis(gen) * (conf::window_size_f.y - 2.f * conf::h);
 
 		float const vx = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
 		float const vy = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );

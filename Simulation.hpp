@@ -3,6 +3,7 @@
 #include "configuration.hpp"
 #include "Particle.hpp"
 #include "hashGrid.hpp"
+#include "CollisionHandler.hpp"
 #include <sstream>
 
 class Simulation
@@ -15,7 +16,7 @@ private:
     void processEvents();
     void update(sf::Time);
     void render();
-    void neighborSearch();
+    void highlightNeighborSearch();
     void calculateTotalEnergy();
 
 private:
@@ -82,29 +83,15 @@ void Simulation::processEvents()
 
 void Simulation::update(sf::Time deltaTime)
 {
-    std::vector<sf::Vector2f> f_collisions(conf::n_particles, sf::Vector2f(0.0f, 0.0f));
-
-    for (uint32_t i{ conf::n_particles }; i--; )
-    {
-        for (uint32_t j = i; j--; )
-        {
-            float d_ij = distance(particles[j].getPosition(), particles[i].getPosition());
-            
-            if (d_ij < 2.f * conf::h)
-            {
-                sf::Vector2f u_ij = (particles[j].getPosition() - particles[i].getPosition()) / d_ij;
-                sf::Vector2f f_collision_i = -1.f *conf::k * (2.f * conf::h - d_ij) * u_ij;
-                
-                f_collisions[i] += f_collision_i;
-                f_collisions[j] -= f_collision_i;
-            }
-        }
-    }
+    // Change here the CollisionHandler
+    GridCollisionHandler collisionHandler;
+    std::vector<sf::Vector2f> f_collisions = collisionHandler.handleCollisions(particles);
 
     for (uint32_t i{ conf::n_particles }; i--; )
     {
         particles[i].updateParticle(deltaTime, f_collisions[i]);
     }
+
 }
 
 void Simulation::render()
@@ -117,7 +104,7 @@ void Simulation::render()
         mWindow.draw(particles[i].shape);
     }
 
-    neighborSearch();
+    highlightNeighborSearch();
 
     calculateTotalEnergy();
 
@@ -128,7 +115,7 @@ void Simulation::render()
     mWindow.display();
 }
 
-void Simulation::neighborSearch()
+void Simulation::highlightNeighborSearch()
 {
     hashGrid.clearGrid();
     hashGrid.mapParticlesToCell(particles);
@@ -136,7 +123,15 @@ void Simulation::neighborSearch()
     sf::Vector2f mousePos = (sf::Vector2f) sf::Mouse::getPosition(mWindow);
 
     uint32_t mouseHash = hashGrid.getHashFromPos(mousePos);
-    std::vector<Particle> cellParticles = hashGrid.getContentOfCell(mouseHash);
+
+    std::vector<uint32_t> idxs = hashGrid.getContentOfCell(mouseHash);
+
+    std::vector<Particle> cellParticles(idxs.size());
+
+    for ( int i=0; i<idxs.size(); i++ )
+    {
+        cellParticles[i] = particles[idxs[i]];
+    }
 
     for (auto& particle : cellParticles)
     {
@@ -145,18 +140,19 @@ void Simulation::neighborSearch()
         mWindow.draw(particle.shape);
     }
 
-    //sf::RectangleShape cellBorder;
+    sf::RectangleShape cellBorder;
 
-    ////float a = (mousePos.x % conf::cellSize) * conf::cellSize;
+    float x_border = mousePos.x - (int) mousePos.x % conf::cellSize;
+    float y_border = mousePos.y - (int) mousePos.y % conf::cellSize;
 
-    //cellBorder.setPosition(1000, 1000);
+    cellBorder.setPosition(x_border, y_border);
 
-    //cellBorder.setOutlineColor(sf::Color::Magenta);
-    //cellBorder.setOutlineThickness(5.f);
-    //
-    //cellBorder.setSize({ 100.f,100.f });
-    //cellBorder.setFillColor(sf::Color::Transparent);
-    //mWindow.draw(cellBorder);
+    cellBorder.setOutlineColor(sf::Color::Magenta);
+    cellBorder.setOutlineThickness(3.f);
+    
+    cellBorder.setSize({ conf::cellSize, conf::cellSize });
+    cellBorder.setFillColor(sf::Color::Transparent);
+    mWindow.draw(cellBorder);
 
     oss << "Mouse Hash: " << mouseHash << std::endl;
 }

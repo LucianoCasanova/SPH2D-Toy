@@ -5,14 +5,15 @@
 struct HashGrid
 {
 	private:
-		std::unordered_map< uint32_t, std::vector<Particle>> hashMap;
+		std::unordered_map< uint32_t, std::vector<uint32_t>> hashMap;
 
 	public:
 		HashGrid();
 		void clearGrid();
 		void mapParticlesToCell(std::vector<Particle>& particles);
-		std::vector<Particle> getContentOfCell(uint32_t hash);
+		std::vector<uint32_t> getContentOfCell(uint32_t hash);
 		uint32_t getHashFromPos(sf::Vector2f pos);
+		std::vector<uint32_t> getListOfHash();
 };
 
 HashGrid::HashGrid()
@@ -26,7 +27,9 @@ uint32_t HashGrid::getHashFromPos(sf::Vector2f pos)
 	uint32_t y = pos.y / conf::cellSize;
 
 	//uint32_t hash = (uint64_t) std::pow(x * conf::prime_x, y * conf::prime_y) % conf::hashMapSize;
-	uint32_t hash = (x * conf::prime_x + y * conf::prime_y) % conf::hashMapSize;
+	//uint32_t hash = (x * conf::prime_x + y * conf::prime_y) % conf::hashMapSize;
+
+	uint32_t hash = x + conf::n_collumns * y;
 
 	return hash;
 }
@@ -37,11 +40,11 @@ void HashGrid::mapParticlesToCell(std::vector<Particle>& particles)
 	{
 		uint32_t hash = getHashFromPos(particles[i].getPosition());
 		
-		hashMap[hash].push_back(particles[i]);
+		hashMap[hash].push_back(i);
 	}
 }
 
-std::vector<Particle> HashGrid::getContentOfCell(uint32_t hash)
+std::vector<uint32_t> HashGrid::getContentOfCell(uint32_t hash)
 {
 	auto it = hashMap.find(hash);
 
@@ -49,6 +52,18 @@ std::vector<Particle> HashGrid::getContentOfCell(uint32_t hash)
 		return it->second;
 
 	return {};
+}
+
+std::vector<uint32_t> HashGrid::getListOfHash() {
+	
+	std::vector<uint32_t> hashes;
+
+	for (const auto& pair : hashMap)
+	{
+		hashes.push_back(pair.first);
+	}
+
+	return hashes;
 }
 
 void HashGrid::clearGrid()
