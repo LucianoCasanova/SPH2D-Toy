@@ -3,7 +3,8 @@
 #include "configuration.hpp"
 #include "Particle.hpp"
 #include "hashGrid.hpp"
-#include "CollisionHandler.hpp"
+#include "GlobalInteraction.hpp"
+#include "WKernel.hpp"
 #include <sstream>
 
 class Simulation
@@ -23,15 +24,19 @@ private:
     sf::RenderWindow mWindow;
     sf::Time TimePerFrame = sf::seconds(conf::dt);
     std::vector<Particle> particles;
+    WKernel kernel;
     HashGrid hashGrid;
     sf::Text text;
     std::ostringstream oss;
+
+    float tUpdate = 0.f;
+    float tRender = 0.f;
 };
 
 Simulation::Simulation() : 
     mWindow(sf::VideoMode(conf::window_size.x, conf::window_size.y), "SPH2d-Toy", sf::Style::Fullscreen), particles()
 {
-    std::cout << "TimePerFrame: " << TimePerFrame.asSeconds() << std::endl;
+    std::cout << "TimePerFrame: " << TimePerFrame.asMicroseconds() << std::endl;
     particles = createParticles(conf::n_particles);
 
     static sf::Font font;
@@ -52,19 +57,26 @@ void Simulation::run()
 {
     mWindow.setMouseCursorVisible(true);
     sf::Clock clock;
+    sf::Clock clockUpdate;
+    sf::Clock clockRender;
     sf::Time timeSinceLastUpdate = sf::Time::Zero;
+
     while (mWindow.isOpen())
     {
         processEvents();
         timeSinceLastUpdate += clock.restart();
-        //std::cout << timeSinceLastUpdate.asMilliseconds() << std::endl;
         while (timeSinceLastUpdate > TimePerFrame)
         {
             timeSinceLastUpdate -= TimePerFrame;
             processEvents();
+            clockUpdate.restart();
             update(sf::seconds(conf::tau));
+
+            tUpdate = clockUpdate.restart().asMicroseconds();
         }
+        clockRender.restart();
         render();
+        tRender = clockRender.restart().asMicroseconds();
     }
 }
 
@@ -83,15 +95,35 @@ void Simulation::processEvents()
 
 void Simulation::update(sf::Time deltaTime)
 {
-    // Change here the CollisionHandler
-    GridCollisionHandler collisionHandler;
-    std::vector<sf::Vector2f> f_collisions = collisionHandler.handleCollisions(particles);
+    // Change CollisionHandler here
+
+    GlobalInteraction<GridDetector<float>, DensityCalculator, float> densityCalculator;
+
+    std::vector<float> densities = densityCalculator.handleInteraction(particles);
 
     for (uint32_t i{ conf::n_particles }; i--; )
     {
-        particles[i].updateParticle(deltaTime, f_collisions[i]);
+        particles[i].setDensityAndPressure(densities[i]);
     }
 
+    GlobalInteraction<GridDetector<sf::Vector2f>, SPH, sf::Vector2f> collisionHandler;
+
+    /*sf::Clock clockSPH;
+    clockSPH.restart();*/
+
+    std::vector<sf::Vector2f> f_collisions = collisionHandler.handleInteraction(particles);
+
+    //std::cout << clockSPH.restart().asMicroseconds() << std::endl;
+
+    sf::Vector2f f_grav = { 0.f, conf::m_particle * conf::g };
+
+    for (uint32_t i{ conf::n_particles }; i--; )
+    {
+        sf::Vector2f f_air = -1.f * conf::beta * particles[i].getVelocity();
+        //sf::Vector2f f_air{ 0.f, 0.f };
+
+        particles[i].updateParticle(deltaTime, f_collisions[i], f_air + f_grav);
+    }
 }
 
 void Simulation::render()
@@ -107,6 +139,9 @@ void Simulation::render()
     highlightNeighborSearch();
 
     calculateTotalEnergy();
+
+    oss << "Tiempo de update: " << tUpdate << " ms" << std::endl;
+    oss << "Tiempo de render: " << tRender << " ms" << std::endl;
 
     text.setString(oss.str());
     mWindow.draw(text);
@@ -154,7 +189,7 @@ void Simulation::highlightNeighborSearch()
     cellBorder.setFillColor(sf::Color::Transparent);
     mWindow.draw(cellBorder);
 
-    oss << "Mouse Hash: " << mouseHash << std::endl;
+    //oss << "Mouse Hash: " << mouseHash << std::endl;
 }
 
 void Simulation::calculateTotalEnergy()

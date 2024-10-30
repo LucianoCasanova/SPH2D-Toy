@@ -10,7 +10,7 @@ struct HashGrid
 	public:
 		HashGrid();
 		void clearGrid();
-		void mapParticlesToCell(std::vector<Particle>& particles);
+		void mapParticlesToCell(const std::vector<Particle>& particles);
 		std::vector<uint32_t> getContentOfCell(uint32_t hash);
 		uint32_t getHashFromPos(sf::Vector2f pos);
 		std::vector<uint32_t> getListOfHash();
@@ -34,7 +34,7 @@ uint32_t HashGrid::getHashFromPos(sf::Vector2f pos)
 	return hash;
 }
 
-void HashGrid::mapParticlesToCell(std::vector<Particle>& particles)
+void HashGrid::mapParticlesToCell(const std::vector<Particle>& particles)
 {
 	for (uint32_t i{ conf::n_particles }; i--; )
 	{

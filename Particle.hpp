@@ -9,6 +9,8 @@ struct Particle
 		sf::Vector2f v = { 0.f, 0.f } ;
 		sf::Vector2f a = { 0.f, conf::g };
 		float const m = conf::m_particle;
+		float rho = 1;
+		float P = 1;
 
 	private:
 		void handleWallCollisions(sf::Time deltaTime);
@@ -18,12 +20,16 @@ struct Particle
 
 	public:
 		Particle();
+		Particle(sf::Vector2f pos);
 		Particle(sf::Vector2f pos, sf::Vector2f vel);
 		Particle& operator=(const Particle& other);
-		void updateParticle(sf::Time deltaTime, sf::Vector2f& f_collision);
-		sf::Vector2f getPosition();
-		sf::Vector2f getVelocity();
-		float getVelocityMagnitude();
+		void updateParticle(sf::Time deltaTime, sf::Vector2f& f_interaction, sf::Vector2f& f_external);
+		void setDensityAndPressure(float new_rho);
+		sf::Vector2f getPosition() const;
+		sf::Vector2f getVelocity() const;
+		float getVelocityMagnitude() const;
+		float getDensity() const;
+		float getPressure() const;
 };
 
 Particle::Particle()
@@ -33,7 +39,15 @@ Particle::Particle()
 	shape.setPosition(r);
 	shape.setFillColor(sf::Color::Blue);
 }
-
+Particle::Particle(sf::Vector2f pos)
+	: r(pos)
+{
+	shape.setRadius(conf::h);
+	shape.setOrigin(conf::h, conf::h);
+	shape.setPosition(r);
+	shape.setFillColor(sf::Color::Blue); // Check why the following doesn't work
+	//shape.setFillColor(conf::particle_color); 
+}
 Particle::Particle(sf::Vector2f pos, sf::Vector2f vel)
         : r(pos), v(vel)
 {
@@ -52,15 +66,13 @@ Particle& Particle::operator=(const Particle& other)
 	return *this;
 }
 
-void Particle::updateParticle(sf::Time deltaTime, sf::Vector2f& f_collision)
+void Particle::updateParticle(sf::Time deltaTime, sf::Vector2f& f_interaction, sf::Vector2f& f_external)
 {
-
-	sf::Vector2f f_air = -1.f * conf::beta * v;
-	sf::Vector2f f_grav = { 0.f, m*conf::g };
-
-	a = 1.f / m * (f_air + f_grav + f_collision);
+	a = 1.f / m * (f_interaction + f_external);
 
 	// Explicit Euler Method
+	r += v * deltaTime.asSeconds();
+	v += a * deltaTime.asSeconds();
 
 	handleWallCollisions(deltaTime);
 }
@@ -69,9 +81,6 @@ void Particle::updateParticle(sf::Time deltaTime, sf::Vector2f& f_collision)
 
 void Particle::handleWallCollisions(sf::Time deltaTime)
 {
-	r += v * deltaTime.asSeconds();
-	v += a * deltaTime.asSeconds();
-
 	if (r.x < conf::h && v.x < 0 || r.x > conf::window_size_f.x - conf::h && v.x > 0)
 	{
 		v.x *= -1.f * conf::alpha;
@@ -84,43 +93,102 @@ void Particle::handleWallCollisions(sf::Time deltaTime)
 	}
 }
 
+//std::vector<Particle> createParticles(uint32_t count)
+//{
+//	std::vector<Particle> particles;
+//	particles.reserve(count);
+//
+//	//Random numbers generator
+//	std::random_device rd;
+//	std::mt19937 gen(rd());
+//	std::uniform_real_distribution<float> dis(0.0f, 1.0f);
+//
+//	// Create randomly distributed particles on the screen
+//	for (uint32_t i{ count }; i--;)
+//	{
+//		float const rx = conf::h + dis(gen) * (conf::window_size_f.x - 2.f * conf::h);
+//		float const ry = conf::h + dis(gen) * (conf::window_size_f.y - 2.f * conf::h);
+//
+//		float const vx = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
+//		float const vy = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
+//
+//		Particle particle({ rx, ry }, { vx, vy });
+//
+//		particles.push_back({ particle });
+//	}
+//	return particles;
+//}
 std::vector<Particle> createParticles(uint32_t count)
 {
 	std::vector<Particle> particles;
 	particles.reserve(count);
 
-	//Random numbers generator
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<float> dis(0.0f, 1.0f);
 
-	// Create randomly distributed particles on the screen
-	for (uint32_t i{ count }; i--;)
+	float spacing = 3 * conf::h;
+	int x_balls = conf::window_size.x / spacing - 1;
+	int y_balls = conf::n_particles / x_balls + 1;
+	int x_balls_last = conf::n_particles % x_balls;
+
+	for (uint32_t i=0; i < y_balls; i++)
 	{
-		float const rx = conf::h + dis(gen) * (conf::window_size_f.x - 2.f * conf::h);
-		float const ry = conf::h + dis(gen) * (conf::window_size_f.y - 2.f * conf::h);
-
-		float const vx = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
-		float const vy = conf::v_lineal_max * ( dis(gen) * 2.f - 1.f );
-
-		Particle particle({ rx, ry }, { vx, vy });
-
-		particles.push_back({ particle });
+		if (i != y_balls - 1)
+		{
+			for (uint32_t j = 0; j < x_balls; j++)
+			{
+				float const rx = spacing * (1 + j);
+				float const ry = conf::window_size.y - spacing * (1 + i);
+				float const vx = conf::v_lineal_max * (dis(gen) * 2.f - 1.f);
+				Particle particle({ rx, ry }, {vx,0});
+				particles.push_back({ particle });
+			}
+		}
+		else
+		{
+			for (uint32_t j = 0; j < x_balls_last; j++)
+			{
+				float const rx = spacing * (1 + j);
+				float const ry = conf::window_size.y - spacing * (1 + i);
+				float const vx = conf::v_lineal_max * (dis(gen) * 2.f - 1.f);
+				Particle particle({ rx, ry }, { vx,0 });
+				particles.push_back({ particle });
+			}
+		}
 	}
 	return particles;
 }
 
-sf::Vector2f Particle::getPosition()
+sf::Vector2f Particle::getPosition() const
 {
 	return r;
 }
 
-sf::Vector2f Particle::getVelocity()
+sf::Vector2f Particle::getVelocity() const
 {
 	return v;
 }
 
-float Particle::getVelocityMagnitude()
+float Particle::getVelocityMagnitude() const
 {
 	return std::sqrt(v.x * v.x + v.y * v.y);
+}
+
+float Particle::getDensity() const
+{
+	return rho;
+}
+
+float Particle::getPressure() const
+{
+	return P;
+}
+
+void Particle::setDensityAndPressure(float new_rho)
+{
+	float S = 14.f / 30.f * 3.14159 * conf::h * conf::h;
+
+	rho = new_rho + 2.f/( S * 3.f); // Le agrego la autodensidad
+	P = conf::rho_0 * conf::v_max * conf::v_max / conf::gamma * (std::pow(rho / conf::rho_0, conf::gamma) - 1);
 }
