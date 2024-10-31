@@ -12,6 +12,9 @@ class Simulation
 public:
     Simulation();
     void run();
+    static int countChecks;
+    static float x_border;
+    //static const sf::Clock& getClock();
 
 private:
     void processEvents();
@@ -19,6 +22,7 @@ private:
     void render();
     void highlightNeighborSearch();
     void calculateTotalEnergy();
+    
 
 private:
     sf::RenderWindow mWindow;
@@ -28,9 +32,14 @@ private:
     HashGrid hashGrid;
     sf::Text text;
     std::ostringstream oss;
+    static sf::Clock globalClock;
+    
 
     float tUpdate = 0.f;
     float tRender = 0.f;
+    float tModel = 0.f;
+    float tDensity = 0.f;
+    
 };
 
 Simulation::Simulation() : 
@@ -95,11 +104,19 @@ void Simulation::processEvents()
 
 void Simulation::update(sf::Time deltaTime)
 {
+    if (globalClock.getElapsedTime().asSeconds() > conf::t_c)
+        x_border = conf::x_finalBox;
+    
     // Change CollisionHandler here
+
+    sf::Clock clockDensity;
+    clockDensity.restart();
 
     GlobalInteraction<GridDetector<float>, DensityCalculator, float> densityCalculator;
 
     std::vector<float> densities = densityCalculator.handleInteraction(particles);
+
+    tDensity = clockDensity.restart().asMicroseconds();
 
     for (uint32_t i{ conf::n_particles }; i--; )
     {
@@ -108,21 +125,21 @@ void Simulation::update(sf::Time deltaTime)
 
     GlobalInteraction<GridDetector<sf::Vector2f>, SPH, sf::Vector2f> collisionHandler;
 
-    /*sf::Clock clockSPH;
-    clockSPH.restart();*/
+    sf::Clock clockModel;
+    clockModel.restart();
 
     std::vector<sf::Vector2f> f_collisions = collisionHandler.handleInteraction(particles);
 
-    //std::cout << clockSPH.restart().asMicroseconds() << std::endl;
+    tModel = clockModel.restart().asMicroseconds();
 
     sf::Vector2f f_grav = { 0.f, conf::m_particle * conf::g };
 
     for (uint32_t i{ conf::n_particles }; i--; )
     {
-        sf::Vector2f f_air = -1.f * conf::beta * particles[i].getVelocity();
-        //sf::Vector2f f_air{ 0.f, 0.f };
+        //sf::Vector2f f_air = -1.f * conf::beta * particles[i].getVelocity();
+        sf::Vector2f f_air{ 0.f, 0.f };
 
-        particles[i].updateParticle(deltaTime, f_collisions[i], f_air + f_grav);
+        particles[i].updateParticle(deltaTime, f_collisions[i], f_air + f_grav, x_border);
     }
 }
 
@@ -142,6 +159,44 @@ void Simulation::render()
 
     oss << "Tiempo de update: " << tUpdate << " ms" << std::endl;
     oss << "Tiempo de render: " << tRender << " ms" << std::endl;
+    oss << "Tiempo de Model: " << tModel << " ms" << std::endl;
+    oss << "Tiempo de Density: " << tDensity << " ms" << std::endl;
+    oss << "Tiempo global: " << globalClock.getElapsedTime().asSeconds() << std::endl;
+
+    float min_p = particles[0].getPressure();
+    float max_p = min_p;
+    float min_rho = particles[0].getDensity();
+    float max_rho = min_rho;
+
+    for (uint32_t i=1;i<particles.size();i++)
+    {
+        if (particles[i].getPressure() < min_p)
+        {
+            min_p = particles[i].getPressure();
+            min_rho = particles[i].getDensity();
+        }
+        else if (particles[i].getPressure() > max_p)
+        {
+            max_p = particles[i].getPressure();
+            max_rho = particles[i].getDensity();
+        }
+    }
+
+    float S = 14.f / 30.f * 3.14159 * conf::h * conf::h;
+    float rho_own = conf::m_particle * 2.f / (S * 3.f);
+    float P_own = conf::rho_0 * conf::v_max * conf::v_max / conf::gamma * (std::pow(rho_own / conf::rho_0, conf::gamma) - 1);
+
+    oss << "Min_p: " << min_p << " , Max_p: " << max_p << " , P_own: " << P_own << std::endl;
+
+    oss << "Min_rho: " << min_rho << " , Max_rho: " << max_rho << " , rho_own: " << rho_own << " , rho_0: " << conf::rho_0 << std::endl;
+
+    sf::RectangleShape border;
+    border.setPosition({ x_border, 0.f });
+    border.setFillColor(sf::Color::Transparent);
+    border.setOutlineColor(sf::Color::White);
+    border.setOutlineThickness(5.f);
+    border.setSize({ 0.f, conf::window_size_f.y });
+    mWindow.draw(border);
 
     text.setString(oss.str());
     mWindow.draw(text);

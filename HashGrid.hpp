@@ -12,7 +12,8 @@ struct HashGrid
 		void clearGrid();
 		void mapParticlesToCell(const std::vector<Particle>& particles);
 		std::vector<uint32_t> getContentOfCell(uint32_t hash);
-		uint32_t getHashFromPos(sf::Vector2f pos);
+		uint32_t getHashFromPos(const sf::Vector2f& pos);
+		//std::vector<uint32_t> getNeighborsHash(uint32_t hash, const sf::Vector2f& probeParticlePos);
 		std::vector<uint32_t> getListOfHash();
 };
 
@@ -21,7 +22,7 @@ HashGrid::HashGrid()
 	hashMap.reserve(conf::hashMapSize);
 }
 
-uint32_t HashGrid::getHashFromPos(sf::Vector2f pos)
+uint32_t HashGrid::getHashFromPos(const sf::Vector2f& pos)
 {
 	uint32_t x = pos.x / conf::cellSize;
 	uint32_t y = pos.y / conf::cellSize;
@@ -40,7 +41,7 @@ void HashGrid::mapParticlesToCell(const std::vector<Particle>& particles)
 	{
 		uint32_t hash = getHashFromPos(particles[i].getPosition());
 		
-		hashMap[hash].push_back(i);
+		hashMap[hash].push_back(i); // [] operator creates a new empty entry if key hash did not exist
 	}
 }
 

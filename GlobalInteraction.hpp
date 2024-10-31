@@ -31,12 +31,12 @@ struct DensityCalculator : public Action<float>
 
     void calculate(const std::vector<Particle>& particles, std::vector<float>& densities, const uint32_t idx_i, const uint32_t idx_j) const
     {
-        float d_ij = distance(particles[idx_j].getPosition(), particles[idx_i].getPosition());
+        const float d_ij = distance(particles[idx_j].getPosition(), particles[idx_i].getPosition());
 
-        if (d_ij < 2.f * conf::h)
+        if (d_ij < 2 * conf::h)
         {
             WKernel kernel;
-            float W_ij = kernel.W(d_ij);
+            const float W_ij = kernel.W(d_ij);
 
             densities[idx_i] += conf::m_particle * W_ij;
             densities[idx_j] += conf::m_particle * W_ij;
@@ -58,12 +58,12 @@ struct SpringLike : public Model
 {
     void solve(const std::vector<Particle>& particles, std::vector<sf::Vector2f>& f_collisions, const uint32_t idx_i, const uint32_t idx_j) const override
     {
-        float d_ij = distance(particles[idx_j].getPosition(), particles[idx_i].getPosition());
+        const float d_ij = distance(particles[idx_j].getPosition(), particles[idx_i].getPosition());
 
         if (d_ij < 2.f * conf::h)
         {
-            sf::Vector2f u_ij = (particles[idx_j].getPosition() - particles[idx_i].getPosition()) / d_ij;
-            sf::Vector2f f_collision_i = -1.f * conf::k * (2.f * conf::h - d_ij) * u_ij;
+            const sf::Vector2f u_ij = (particles[idx_j].getPosition() - particles[idx_i].getPosition()) / d_ij;
+            const sf::Vector2f f_collision_i = -1.f * conf::k * (2.f * conf::h - d_ij) * u_ij;
 
             f_collisions[idx_i] += f_collision_i;
             f_collisions[idx_j] -= f_collision_i;
@@ -75,36 +75,38 @@ struct SPH : public Model
 {
     void solve(const std::vector<Particle>& particles, std::vector<sf::Vector2f>& f_collisions, const uint32_t idx_i, const uint32_t idx_j) const override
     {
-        float d_ij = distance(particles[idx_j].getPosition(), particles[idx_i].getPosition());
+        const float d_ij = distance(particles[idx_j].getPosition(), particles[idx_i].getPosition());
 
         if (d_ij < 2.f * conf::h)
         {
             /*sf::Clock clockSPH;
             clockSPH.restart();*/
             WKernel kernel;
-            float dW_ij = kernel.dW(d_ij);
+            const float dW_ij = kernel.dW(d_ij);
 
-            sf::Vector2f u_ij = (particles[idx_j].getPosition() - particles[idx_i].getPosition()) / d_ij;
+            const sf::Vector2f u_ij = (particles[idx_j].getPosition() - particles[idx_i].getPosition()) / d_ij;
 
-            float P_i = particles[idx_i].getPressure();
-            float rho_i = particles[idx_i].getDensity();
-            float P_j = particles[idx_j].getPressure();
-            float rho_j = particles[idx_j].getDensity();
+            const float P_i = particles[idx_i].getPressure();
+            const float rho_i = particles[idx_i].getDensity();
+            const float P_j = particles[idx_j].getPressure();
+            const float rho_j = particles[idx_j].getDensity();
 
-            float pressureTerm = P_i / (rho_i * rho_i) + P_j / (rho_j * rho_j);
+            const float pressureTerm = P_i / (rho_i * rho_i) + P_j / (rho_j * rho_j);
 
-            sf::Vector2f f_pressure = -1.f * conf::m_particle * conf::m_particle * pressureTerm * dW_ij * u_ij;
+            const sf::Vector2f f_pressure = -1.f * conf::m_particle * conf::m_particle * pressureTerm * dW_ij * u_ij;
 
-            sf::Vector2f v_i = particles[idx_i].getVelocity();
-            sf::Vector2f v_j = particles[idx_j].getVelocity();
-            float dot_product = (v_i - v_j).x * u_ij.x + (v_i - v_j).y * u_ij.y;
-            sf::Vector2f f_viscosity = conf::m_particle * conf::m_particle * conf::alpha_v * conf::h * conf::v_max * (rho_i + rho_j) / 2.f * dot_product * dW_ij * u_ij;
+            const sf::Vector2f v_i = particles[idx_i].getVelocity();
+            const sf::Vector2f v_j = particles[idx_j].getVelocity();
+            const float dot_product = (v_i - v_j).x * u_ij.x + (v_i - v_j).y * u_ij.y;
+            const sf::Vector2f f_viscosity = conf::m_particle * conf::m_particle * conf::alpha_v * conf::h * conf::v_max * (rho_i + rho_j) / 2.f * dot_product * dW_ij * u_ij;
 
+            //std::cout << pressureTerm << '\n';
             //std::cout << std::sqrt(f_pressure.x* f_pressure.x+ f_pressure.y * f_pressure.y) << std::endl;
-            //std::cout << pressureTerm << std::endl;
+            //std::cout << rho_i / conf::rho_0 << "\t" << rho_j / conf::rho_0 << '\n';
+            //std::cout << P_i / conf::rho_0 << "\t" << P_j / conf::rho_0 << '\n';
 
-            f_collisions[idx_i] += f_pressure + f_viscosity;
-            f_collisions[idx_j] -= f_pressure - f_viscosity;
+            f_collisions[idx_i] += (f_pressure + f_viscosity);
+            f_collisions[idx_j] -= (f_pressure + f_viscosity);
             /*std::cout << clockSPH.restart().asMicroseconds() << std::endl;*/
         }
     }
@@ -136,6 +138,7 @@ struct NaiveDetector : public Detector<Output>
         {
             for (uint32_t j = i; j--; )
             {
+                //countChecks++;
                 action.doAction(particles, output_v, i, j);
             }
         }
@@ -161,10 +164,10 @@ struct GridDetector : public Detector<Output>
 
             for (auto hash : hashes)
             {
-                std::vector<uint32_t> cellIdxs = hashGrid.getContentOfCell(hash);
+                const std::vector<uint32_t> cellIdxs = hashGrid.getContentOfCell(hash);
 
-                sf::Vector2f probeParticlePos = particles[cellIdxs[0]].getPosition();
-                std::vector<uint32_t> neighborsHashes = getNeighborsHash(hash, probeParticlePos);
+                const sf::Vector2f probeParticlePos = particles[cellIdxs[0]].getPosition();
+                const std::vector<uint32_t> neighborsHashes = getNeighborsHash(hash, probeParticlePos);
 
                 for (uint32_t i = (uint32_t)cellIdxs.size(); i--; )
                 {
@@ -172,11 +175,6 @@ struct GridDetector : public Detector<Output>
 
                     for (uint32_t j = i; j--; )
                     {
-                        //std::cout << output_v.size() << std::endl;
-                        /*for (uint32_t k = output_v.size(), k--, k = 0)
-                        {
-                            std::cout
-                        }*/
                         action.doAction(particles, output_v, cellIdxs[i], cellIdxs[j]);
                     }
 
@@ -184,7 +182,7 @@ struct GridDetector : public Detector<Output>
 
                     for (auto neighborHash : neighborsHashes)
                     {
-                        std::vector<uint32_t> neighborCellIdxs = hashGrid.getContentOfCell(neighborHash);
+                        const std::vector<uint32_t> neighborCellIdxs = hashGrid.getContentOfCell(neighborHash);
 
                         for (uint32_t j = (uint32_t)neighborCellIdxs.size(); j--;)
                         {
@@ -196,7 +194,7 @@ struct GridDetector : public Detector<Output>
             return output_v;
         }
 
-        std::vector<uint32_t> getNeighborsHash(uint32_t hash, sf::Vector2f probeParticlePos) // Only taking below and right cells to avoid repetition
+        std::vector<uint32_t> getNeighborsHash(uint32_t hash, const sf::Vector2f& probeParticlePos) // Only taking below and right cells to avoid repetition
         {
             std::vector<uint32_t> neighborsHash;
 

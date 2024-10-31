@@ -2,6 +2,8 @@
 #include "configuration.hpp"
 #include <random>
 
+class Simulation;
+
 struct Particle
 {
 	private:
@@ -13,17 +15,17 @@ struct Particle
 		float P = 1;
 
 	private:
-		void handleWallCollisions(sf::Time deltaTime);
+		void handleWallCollisions(sf::Time deltaTime, const float x_border);
 	
 	public:
 		sf::CircleShape shape;
 
 	public:
 		Particle();
-		Particle(sf::Vector2f pos);
-		Particle(sf::Vector2f pos, sf::Vector2f vel);
+		Particle(const sf::Vector2f& pos);
+		Particle(const sf::Vector2f& pos, const sf::Vector2f& vel);
 		Particle& operator=(const Particle& other);
-		void updateParticle(sf::Time deltaTime, sf::Vector2f& f_interaction, sf::Vector2f& f_external);
+		void updateParticle(sf::Time deltaTime, const sf::Vector2f& f_interaction, const sf::Vector2f& f_external, const float x_border);
 		void setDensityAndPressure(float new_rho);
 		sf::Vector2f getPosition() const;
 		sf::Vector2f getVelocity() const;
@@ -39,7 +41,7 @@ Particle::Particle()
 	shape.setPosition(r);
 	shape.setFillColor(sf::Color::Blue);
 }
-Particle::Particle(sf::Vector2f pos)
+Particle::Particle(const sf::Vector2f& pos)
 	: r(pos)
 {
 	shape.setRadius(conf::h);
@@ -48,7 +50,7 @@ Particle::Particle(sf::Vector2f pos)
 	shape.setFillColor(sf::Color::Blue); // Check why the following doesn't work
 	//shape.setFillColor(conf::particle_color); 
 }
-Particle::Particle(sf::Vector2f pos, sf::Vector2f vel)
+Particle::Particle(const sf::Vector2f& pos,const sf::Vector2f& vel)
         : r(pos), v(vel)
 {
 	shape.setRadius(conf::h);
@@ -66,7 +68,7 @@ Particle& Particle::operator=(const Particle& other)
 	return *this;
 }
 
-void Particle::updateParticle(sf::Time deltaTime, sf::Vector2f& f_interaction, sf::Vector2f& f_external)
+void Particle::updateParticle(sf::Time deltaTime, const sf::Vector2f& f_interaction, const sf::Vector2f& f_external, const float x_border)
 {
 	a = 1.f / m * (f_interaction + f_external);
 
@@ -74,14 +76,15 @@ void Particle::updateParticle(sf::Time deltaTime, sf::Vector2f& f_interaction, s
 	r += v * deltaTime.asSeconds();
 	v += a * deltaTime.asSeconds();
 
-	handleWallCollisions(deltaTime);
+	handleWallCollisions(deltaTime, x_border);
 }
 
 // Inellastic discrete
 
-void Particle::handleWallCollisions(sf::Time deltaTime)
+void Particle::handleWallCollisions(sf::Time deltaTime, const float x_border)
 {
-	if (r.x < conf::h && v.x < 0 || r.x > conf::window_size_f.x - conf::h && v.x > 0)
+
+	if (r.x < conf::h && v.x < 0 || r.x > x_border - conf::h && v.x > 0)
 	{
 		v.x *= -1.f * conf::alpha;
 		v.y *= conf::alpha;
@@ -127,8 +130,8 @@ std::vector<Particle> createParticles(uint32_t count)
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<float> dis(0.0f, 1.0f);
 
-	float spacing = 3 * conf::h;
-	int x_balls = conf::window_size.x / spacing - 1;
+	float spacing = conf::spacing;
+	int x_balls = conf::x_initialBox / spacing - 1;
 	int y_balls = conf::n_particles / x_balls + 1;
 	int x_balls_last = conf::n_particles % x_balls;
 
@@ -141,7 +144,8 @@ std::vector<Particle> createParticles(uint32_t count)
 				float const rx = spacing * (1 + j);
 				float const ry = conf::window_size.y - spacing * (1 + i);
 				float const vx = conf::v_lineal_max * (dis(gen) * 2.f - 1.f);
-				Particle particle({ rx, ry }, {vx,0});
+				float const vy = conf::v_lineal_max/10.f * (dis(gen) * 2.f - 1.f);
+				Particle particle({ rx, ry }, {vx, vy});
 				particles.push_back({ particle });
 			}
 		}
@@ -152,7 +156,8 @@ std::vector<Particle> createParticles(uint32_t count)
 				float const rx = spacing * (1 + j);
 				float const ry = conf::window_size.y - spacing * (1 + i);
 				float const vx = conf::v_lineal_max * (dis(gen) * 2.f - 1.f);
-				Particle particle({ rx, ry }, { vx,0 });
+				float const vy = conf::v_lineal_max / 10.f * (dis(gen) * 2.f - 1.f);
+				Particle particle({ rx, ry }, { vx, vy });
 				particles.push_back({ particle });
 			}
 		}
@@ -189,6 +194,6 @@ void Particle::setDensityAndPressure(float new_rho)
 {
 	float S = 14.f / 30.f * 3.14159 * conf::h * conf::h;
 
-	rho = new_rho + 2.f/( S * 3.f); // Le agrego la autodensidad
+	rho = new_rho +  2.f/( S * 3.f); // Le agrego la autodensidad, falta multiplicar por la masa
 	P = conf::rho_0 * conf::v_max * conf::v_max / conf::gamma * (std::pow(rho / conf::rho_0, conf::gamma) - 1);
 }
